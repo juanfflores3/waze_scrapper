@@ -1,6 +1,32 @@
 const puppeteer = require('puppeteer');
 const { Kafka } = require('kafkajs');
+const { Client } = require('@elastic/elasticsearch');
 
+//////////////////////////////////
+// ElasticSearch
+//////////////////////////////////
+
+// Configurar ElasticSearch
+const esClient = new Client({ node: 'http://localhost:9200' });
+
+// Función para enviar datos a ElasticSearch
+const sendDataElastic = async (data) => {
+    try {
+        const body = {
+            data,
+            timestamp: new Date().toDateString()
+        };
+
+        await esClient.index({
+            index: 'data_waze',
+            body: body
+        });
+
+        console.log('Datos enviados a ElasticSearch');
+    } catch (error) {
+        console.error(`Error al enviar los datos a ElasticSearch: ${error}`);
+    }
+};
 
 //////////////////////////////////
 // Kafka
@@ -28,6 +54,8 @@ const sendJamDetails = async (jamDetails) => {
             messages: [{ value: JSON.stringify(jamDetails)}]
         });
         console.log('Detalles de los atascos enviados a Kafka al tópico jamDetails');
+
+        // await sendDataElastic(jamDetails);
     } catch (error) {
         console.error(`Error al enviar los detalles a Kafka: ${error}`);
     }
@@ -40,6 +68,8 @@ const sendAlertDetails = async(alertDetails) => {
             messages: [{ value: JSON.stringify(alertDetails)}]
         });
         console.log('Detalles de las alertas enviados a Kafka al tópico alertDetails');
+
+        await sendDataElastic(alertDetails);
     } catch (error) {
         console.error(`Error al enviar los detalles a Kafka: ${error}`);
     }
