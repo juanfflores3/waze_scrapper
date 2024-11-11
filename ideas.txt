@@ -1,0 +1,16 @@
+En que comuna hay mas atascos?
+Cuál es la cantidad de atascos en la comuna/ciudad X?
+Cuál es la comuna/ciudad con más atascos?
+Cuál es la comuna/cuidad con más policias?
+Cual es la calle con menor velocidad?
+
+
+Tipos de eventos:
+    - Policia (Police)
+    - Choque de vehiculos (Car accident)
+    - Falla en el semáforo (Traffic Light Fault)
+    - Calle cerrada (Road closed)
+    - Calle en construcción (Road construction)
+    - Obstaculo en la calle (Hazard on road)
+    - Hoyo en la calle (Pothole)
+    - 

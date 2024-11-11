@@ -1,0 +1,18 @@
+Instalar dependencias de js
+    npm init -y
+
+Instalar dependencias de puppeteer
+    npm i puppeteer
+
+Conectarse a los brokers de Kafka una
+vez levantado los servicios
+    docker exec -it kafka-broker-1 kafka-topics.sh --create --topic test-topic --partitions 3 --replication-factor 2 --bootstrap-server kafka-broker-1:9092
+
+Eliminar huerfanos de mis contenedores
+    docker compose down -v --remove-orphans
+
+Actualizar repositorio
+    git add
+    git commit -m "v2"
+    git push
+

@@ -1,0 +1,12 @@
+Accessing Request Data
+    1. request.url(): Returns the URL of the request.
+    2. request.method(): Returns the HTTP method of the request (e.g., GET, POST).
+    3. request.headers(): Returns an object containing the request headers.
+    4. request.postData(): Returns the POST data sent with the request, if any.
+
+Accessing Response Data
+    1. response.url(): Returns the URL of the response.
+    2. response.status(): Returns the HTTP status code of the response.
+    3. response.headers(): Returns an object containing the response headers.
+    4. response.text(): Returns a promise that resolves to the response body as text.
+    5. response.json(): Returns a promise that resolves to the response body parsed as JSON.
