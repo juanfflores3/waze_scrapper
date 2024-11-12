@@ -10,7 +10,7 @@ const { Client } = require('@elastic/elasticsearch');
 const esClient = new Client({ node: 'http://localhost:9200' });
 
 // Función para enviar datos a ElasticSearch
-const sendDataElastic = async (data) => {
+const sendAlertElastic = async (data) => {
     try {
         const body = {
             data,
@@ -18,13 +18,31 @@ const sendDataElastic = async (data) => {
         };
 
         await esClient.index({
-            index: 'data_waze',
+            index: 'alerts_details',
             body: body
         });
 
-        console.log('Datos enviados a ElasticSearch');
+        console.log('Alerta enviada a ElasticSearch');
     } catch (error) {
-        console.error(`Error al enviar los datos a ElasticSearch: ${error}`);
+        console.error(`Error al enviar alerta a ElasticSearch: ${error}`);
+    }
+};
+
+const sendJamDetailsElastic = async (jamDetails) => {
+    try {
+        const body = {
+            jamDetails,
+            timestamp: new Date().toDateString()
+        }
+
+        await esClient.index({
+            index: 'jams_details',
+            body: body
+        });
+
+        console.log('Detalles del atasco enviado a ElasticSearch')
+    } catch (error) {
+        console.error(`Error al enviar detalles del atasco a ElasticSearch: ${error}`)
     }
 };
 
@@ -47,7 +65,7 @@ async function startProducerKafka(){
     console.log('Conectado a los brokers de Kafka como productor');
 }
 
-const sendJamDetails = async (jamDetails) => {
+const sendJamDetailsKafka = async (jamDetails) => {
     try {
         await producer.send({
             topic: 'jamDetails',
@@ -55,13 +73,13 @@ const sendJamDetails = async (jamDetails) => {
         });
         console.log('Detalles de los atascos enviados a Kafka al tópico jamDetails');
 
-        // await sendDataElastic(jamDetails);
+        await sendJamDetailsElastic(jamDetails);
     } catch (error) {
         console.error(`Error al enviar los detalles a Kafka: ${error}`);
     }
 };
 
-const sendAlertDetails = async(alertDetails) => {
+const sendAlertDetailsKafka = async(alertDetails) => {
     try {
         await producer.send({
             topic: 'alertDetails',
@@ -69,7 +87,7 @@ const sendAlertDetails = async(alertDetails) => {
         });
         console.log('Detalles de las alertas enviados a Kafka al tópico alertDetails');
 
-        await sendDataElastic(alertDetails);
+        await sendAlertElastic(alertDetails);
     } catch (error) {
         console.error(`Error al enviar los detalles a Kafka: ${error}`);
     }
@@ -93,17 +111,36 @@ async function openPage(browser, url) {
 
 // Interceptar las respuestas de Waze
 async function interceptResponses(page) {
+    // Constante para que intercepte solo la última respuesta de tipo /api/georss
+    let lastResponse = null; 
+
+    /* Esto se hace para que no exista una redundancia de datos al extraer
+    demasiados /api/georss */
+
+    // Interceptar las respuestas
     page.on('response', async (response) => {
         const url = response.url();
         if (url.includes('/api/georss')) {
             try {
-                const data = await response.json();
-                processTrafficData(data);
+                lastResponse = (response);
             } catch (error) {
                 console.error(`Error al procesar la respuesta de ${url}:`, error);
             }
         }
     });
+
+    await new Promise(r => setTimeout(r, 10000));
+
+    if (lastResponse) {
+        try {
+            const data = await lastResponse.json();
+            processTrafficData(data);
+        } catch (error) {
+            console.log(`Error al procesar la ultima respuesta: ${error}`);
+        }
+    } else {
+        console.log('No se interceptaron las respuestas relevantes');
+    }
 }
 
 // Procesar los datos de tráfico y alertas
@@ -122,7 +159,7 @@ function processTrafficData(data) {
                 streetEnd: jam.endNode,
                 speedKmh: jam.speedKMH
             }
-            sendJamDetails(jamDetails);
+            sendJamDetailsKafka(jamDetails);
         });
 
         data.alerts.forEach (alert => {
@@ -136,7 +173,7 @@ function processTrafficData(data) {
                 typeAlert: alert.type,
                 streetName: alert.street
             }
-            sendAlertDetails(alertDetails);
+            sendAlertDetailsKafka(alertDetails);
         });
     } else console.log('No hay datos de tráfico');
 }
@@ -164,8 +201,9 @@ async function main() {
     const browser = await initBrowser();
     const page = await openPage(browser, URLStgo);
 
-    await interceptResponses(page);
     await interactWithPage(page);
+
+    await interceptResponses(page);
 }
 
 main().catch(console.error);
