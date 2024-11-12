@@ -4,6 +4,15 @@ Instalar dependencias de js
 Instalar dependencias de puppeteer
     npm i puppeteer
 
+Instalar dependencias de Kafka
+    npm i kafkajs
+
+Instalar dependencias de ElasticSearch
+    npm i @elastic/elasticsearch
+
+Instalar dependencias de Spark
+    npm i spark
+
 Conectarse a los brokers de Kafka una
 vez levantado los servicios
     docker exec -it kafka-broker-1 kafka-topics.sh --create --topic test-topic --partitions 3 --replication-factor 2 --bootstrap-server kafka-broker-1:9092
