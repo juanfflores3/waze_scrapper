@@ -1,0 +1,27 @@
+services:
+  elasticsearch:
+    image: elasticsearch:7.17.5
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS= -Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    networks:
+      - elastic_network
+    
+  kibana: 
+    image: kibana:7.17.5
+    container_name: kibana
+    depends_on:
+      - elasticsearch
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    networks:
+      - elastic_network
+
+networks:
+  elastic_network:
+    driver: bridge
