@@ -12,10 +12,11 @@ const csv = require('csv-parser');
 const esClient = new Client({ node: 'http://localhost:9200' });
 
 // Función para enviar datos a ElasticSearch
-const sendAlertElastic = async (alert) => {
+const sendAlertElastic = async (alert, city) => {
     try {
         const body = {
             alert,
+            city,
             timestamp: new Date().toDateString()
         };
 
@@ -31,10 +32,11 @@ const sendAlertElastic = async (alert) => {
     }
 };
 
-const sendJamDetailsElastic = async (jamDetails) => {
+const sendJamDetailsElastic = async (jamDetails, city) => {
     try {
         const body = {
             jamDetails,
+            city,
             timestamp: new Date().toDateString()
         }
 
@@ -68,7 +70,7 @@ async function openPage(browser, url) {
 }
 
 // Interceptar las respuestas de Waze
-async function interceptResponses(page) {
+async function interceptResponses(page, city) {
     // Constante para que intercepte solo la última respuesta de tipo /api/georss
     let lastResponse = null; 
 
@@ -92,7 +94,7 @@ async function interceptResponses(page) {
     if (lastResponse) {
         try {
             const data = await lastResponse.json();
-            processTrafficData(data);
+            processTrafficData(data, city);
         } catch (error) {
             console.log(`Error al procesar la ultima respuesta: ${error}`);
         }
@@ -102,16 +104,10 @@ async function interceptResponses(page) {
 }
 
 // Procesar los datos de tráfico y alertas
-function processTrafficData(data) {
+function processTrafficData(data, city) {
 
     if (Array.isArray(data.jams)) {
         data.jams.forEach(jam => {
-            // const commune = jam.city;
-            // const streetName = jam.street;
-            // const streetEnd = jam.endNode;
-            // const speedKmh = jam.speedKMH;
-            // console.log(`Velocidad: ${speedKmh} km/h desde la calle ${streetName} hasta ${streetEnd} en la comuna de ${commune}`);
-
             const jamDetails = {
                 idJam: jam.id,
                 commune: jam.city,
@@ -120,23 +116,19 @@ function processTrafficData(data) {
                 speedKmh: jam.speedKMH,
                 length: jam.length
             }
-            sendJamDetailsElastic(jamDetails);
+            sendJamDetailsElastic(jamDetails, city);
         });
     }
     
     if (Array.isArray(data.alerts)) {
         data.alerts.forEach(alert => {
-            // const commune = alert.city;
-            // const typeAlert = alert.type;
-            // const streetName = alert.street;
-            // console.log(`Alerta: ${typeAlert} en la calle ${streetName} en la comuna de ${commune}`);
             const alertDetails = {
                 idAlert: alert.id,
                 commune: alert.city,
                 typeAlert: alert.type,
                 streetName: alert.street
             }
-            sendAlertElastic(alertDetails);
+            sendAlertElastic(alertDetails, city);
         }); 
     } else console.log('No hay datos de tráfico');
 }
@@ -172,10 +164,11 @@ async function interactWithPage(page) {
 async function readCSVFile(filePath) {
     return new Promise((resolve, reject) => {
         const urls = [];
+        const country = null;
         fs.createReadStream(filePath)
             .pipe(csv())
             .on('data', (row) => {
-                urls.push(row.url);
+                urls.push({ url: row.url, city: row.city });
             })
             .on('end', () => {
                 resolve(urls);
@@ -185,6 +178,7 @@ async function readCSVFile(filePath) {
             });
     });
 }
+
 
 //////////////////////////////////
 // Main
@@ -196,32 +190,14 @@ async function main() {
 
     const browser = await initBrowser();
     
-    for (let url of urls) {
+    for (let {url, city} of urls) {
         const page = await openPage(browser, url);
 
         await interactWithPage(page);
 
-        await interceptResponses(page);
+        await interceptResponses(page, city);
     }
     await browser.close();
 }
 
 main().catch(console.error);
-
-// waze-tour-tooltip__acknowledge
-// XHR = xmlhttprequest
-
-    // page.on('request', (req) => {
-    //     if (req.resourceType() === 'xhr' && req.method() === 'GET') {
-    //         console.log(`Request made to ${req.url()}`);
-    //     } else req.continue();
-    // });
-
-    // await page.setRequestInterception(true);
-
-    // page.on('request', (req) => {
-    //     if (req.url().includes('/api/georss')) {
-    //         console.log(`Request made to ${req.url()}`);
-    //         req.continue();
-    //     }
-    // });
